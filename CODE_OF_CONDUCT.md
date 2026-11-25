@@ -20,7 +20,7 @@ This policy applies in issues, pull requests, discussions, reviews, and other sp
 
 ## Reporting and Enforcement
 
-Do not open a public issue about a conduct incident. Contact the maintainer through the [repository owner's GitHub profile](https://github.com/clawbrowser) and request a private channel. Include only the context needed to arrange private follow-up; do not publish sensitive details.
+Do not open a public issue about a conduct incident. Contact the maintainer through the [repository owner's GitHub profile](https://github.com/muhamien) and request a private channel. Include only the context needed to arrange private follow-up; do not publish sensitive details.
 
 Maintainers may remove content or apply a correction, warning, temporary restriction, or permanent restriction according to the severity and pattern of behavior. Reports will be handled as privately as practical, with attention to the safety of affected participants.
 

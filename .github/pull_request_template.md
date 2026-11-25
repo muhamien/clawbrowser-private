@@ -24,3 +24,7 @@ For visible UI changes, add before/after screenshots or a short recording.
 ## Notes
 
 Notable risks, limitations, migrations, or follow-up work.
+
+## Runtime network impact
+
+Describe any new destinations, local control changes, and evidence for allowed and blocked traffic. For documentation changes, check that status claims match implementation.

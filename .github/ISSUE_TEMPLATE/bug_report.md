@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem to help us improve Clawbrowser
+about: Report a problem to help us improve Clawbrowser Private
 title: "[Bug] "
 labels: bug
 assignees: ''
@@ -26,7 +26,7 @@ What actually happened.
 
 ## Environment
 
-- Clawbrowser version:
+- Clawbrowser Private version:
 - Operating system:
 - Relevant configuration (proxy, profile, etc.):
 
@@ -37,3 +37,7 @@ Attach relevant logs or screenshots with sensitive information removed.
 ## Additional context
 
 Any other context about the problem.
+
+## Local runtime evidence
+
+Include the source revision, implementation status, network policy, and sanitized observations relevant to the report.

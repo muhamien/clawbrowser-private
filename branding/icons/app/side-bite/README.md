@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](../../../../docs/local-runtime.md).
+
 # Side Bite App Assets
 
 This folder contains committed desktop packaging exports derived from [side_bite.svg](/Users/nomionz/dev/clawbro/clawbrowser_core/clawbrowser/resources/side_bite.svg).

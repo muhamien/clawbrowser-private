@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](local-runtime.md).
+
 # Managed proxy boundary and built-in DoH
 
 ## Reproduction on Linux candidate 065

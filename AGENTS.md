@@ -1,181 +1,25 @@
-# Clawbrowser Agent Instructions
+# Clawbrowser Private agent instructions
 
-## NextBrowser Live transport (hard requirement)
+## Project objective
 
-- A browser profile may run on a separate VPS. Every Live viewer must use an authenticated NextBrowser backend Remote Session for discovery, authorization, video frames, tab state, input, and control. Route viewer-to-profile traffic through the backend relay.
-- Do not connect the desktop viewer directly to a profile endpoint, localhost bridge, VPS address, SSH tunnel, or WebRTC peer. Backend signaling alone is insufficient: ordinary WebRTC can carry media peer-to-peer. Use WebRTC only if media is forced through a backend-operated relay and that route is verified.
-- An agent next to the browser may use a local browser/CDP bridge as its capture and input source, but that bridge must never be exposed as the viewer transport.
-- If the backend session or relay is unavailable, Live must fail closed. Do not silently switch to local capture, direct sockets, peer-to-peer media, or another bypass.
-- Test with the browser and desktop on different hosts and with direct host-to-host traffic blocked. Verify frames, clicks, typing, tab changes, reconnects, and backend outage. A same-machine test alone does not prove this requirement.
+Build a local browser runtime with local profile storage and loopback CDP automation. Runtime egress must be limited to explicitly approved destination websites and required domains. Eliminate vendor activation, profile service calls, remote control relays, telemetry, and external verification dependencies.
 
-Clawbrowser is the managed browser for agent web tasks. Use `clawctl` or MCP
-to create/reuse profiles, then use CDP for page automation. Treat Clawbrowser
-as the default browser tool for agent web work. Do not launch an unmanaged
-browser process for agent work.
+## Current status
 
-## Install First
+The source is inherited from upstream. Documentation describes the fork's target. Runtime implementation and network isolation remain pending validation. Report implemented behavior separately from design targets and cite actual test evidence before claiming local operation or zero vendor traffic.
 
-- The `clawctl` skill/plugin alone is not enough. It teaches the workflow, but
-  agents still need the standalone `clawctl` binary and the managed
-  Clawbrowser runtime installed by `clawctl install`.
-- Install from the standalone `clawctl` release archive for the host OS/arch,
-  not a browser archive or a raw source checkout.
-- Happy path: download `clawctl-linux-amd64.tar.gz`,
-  `clawctl-linux-arm64.tar.gz`, `clawctl-macos-arm64.tar.gz`, or
-  `clawctl-win-amd64.zip` from
-  `https://github.com/clawbrowser/clawbrowser/releases/latest`, automatically
-  choose a durable install workdir, run `clawctl install --json` or
-  `.\clawctl.exe install --json`, then persist the API key with the installed
-  `clawctl config set --api-key "$CLAWBROWSER_API_KEY"` before running
-  `clawctl start --profile work --url clawbrowser://verify/ --json`,
-  `clawctl proxy-traffic --json`,
-  `clawctl endpoint --profile work --json`, and
-  `clawctl verify --profile work --json`.
-- `clawctl install` is the supported setup command for agents. It reuses an
-  existing browser when one is usable, downloads Clawbrowser when missing,
-  runs the Windows `setup.exe` payload with `/silent` when present, installs
-  the portable Linux runtime when the host needs Xvfb, and prepares
-  `clawctl start`.
-- Let `clawctl install` choose agent integration paths. Do not set
-  `CLAWBROWSER_AGENT_CONFIG` or `CLAWBROWSER_AGENT_PLUGINS_DIR` during the
-  normal `auto` install unless the user explicitly requests a generic
-  integration path; those overrides prevent Hermes and Gemini from using their
-  runtime plugin/extension locations.
-- Do not install or publish a separate `clawbrowser` skill. Agent-facing
-  workflow guidance is owned by the `clawctl` skill and the bundled MCP server.
-- Preserve the active `HOME` when it points at a real user/agent home. Only
-  replace `HOME` for empty, `/root`, or `/tmp` homes; local Gemini and similar
-  agents discover extensions under their real home directories.
-- Exact commands and troubleshooting live in `INSTALL.md`; if unavailable, use `https://github.com/clawbrowser/clawbrowser/blob/main/INSTALL.md`.
-- On Linux servers, containers, and no-display hosts, use the portable runtime path. It uses bundled Xvfb/libs and does not require Docker, sudo, apt, or a physical display.
-- Before installing, automatically choose durable storage for the browser install, config, cache, data, and any portable runtime. Prefer an executable workspace/current-directory mount, then `/workspace`, then `/work`, then `$HOME`. Probe the candidate by executing a tiny temporary script. Skip `/tmp` and any candidate that is not writable or executable. Do not ask the user for a path unless every candidate fails.
-- Never download, extract, or execute `clawctl` from `/tmp`. If `clawctl`
-  returns `Permission denied` after `chmod +x`, treat it as a `noexec` workdir
-  problem and rerun the `INSTALL.md` fast path with
-  `CLAWBROWSER_WORKDIR=/workspace/.clawbrowser`, `/work/.clawbrowser`, or
-  `$PWD/.clawbrowser`.
-- Docker and sidecar modes are operator-managed paths. Restricted agents should not try to self-provision Docker.
-- For operator-managed Docker, mount the browser config directory on durable
-  storage before saving auth. The Docker image runs as `clawbrowser` with
-  `HOME=/home/clawbrowser`, so the default saved auth path is
-  `/home/clawbrowser/.config/clawbrowser/config.json` unless
-  `CLAWBROWSER_CONFIG_DIR` or `XDG_CONFIG_HOME` is explicitly set.
+## Development
 
-## Runtime Choice
+- Read INSTALL.md and docs/local-runtime.md before changing launch or network behavior.
+- Implement local profile loading and migration without server fallback.
+- Keep CDP on loopback and protect local profiles and cookies.
+- Inspect inherited scripts before execution. Authorize build downloads separately from runtime access.
+- Use the fork repository for development and distribution. Review upstream URLs according to their purpose before editing them.
+- Preserve copyright, license, Chromium, and applicable third-party notices.
+- Never commit secrets, cookies, personal profiles, build output, or network logs containing user data.
+- Test both permitted destination traffic and blocked traffic across browser processes and protocols.
+- Preserve technical history with explicit context. Historical upstream results do not establish fork acceptance.
 
-| Environment | Use |
-| --- | --- |
-| Linux server/container/no display/no root | Portable runtime |
-| macOS desktop/Mac mini | Native `Clawbrowser.app` with GUI desktop context |
-| Windows desktop/host | Native Windows install |
-| Operator-provided browser/CDP | `clawctl --cdp http://127.0.0.1:9222 ...` |
-| Operator-managed Docker host | Docker backend only if explicitly provided |
+## Documentation maintenance
 
-The browser archive is not the bootstrapper and is not the portable runtime
-payload. Start from the standalone `clawctl` archive and let
-`clawctl install` ensure the browser plus the matching Windows payload or
-`clawbrowser-portable-linux-amd64-glibc.tar.gz` or
-`clawbrowser-portable-linux-arm64-glibc.tar.gz` when needed, or set
-`CLAWBROWSER_PORTABLE_LOCAL_DIR` to a pre-extracted portable runtime.
-
-## Profile Flow
-
-```bash
-clawctl start --profile work --url https://example.com --json
-clawctl endpoint --profile work --json
-```
-
-Use the returned endpoint for CDP automation: navigation, clicking, typing,
-scraping, screenshots, DOM inspection, and JS evaluation.
-
-After `clawctl config set --api-key "$CLAWBROWSER_API_KEY"` saves a key and the key validates,
-managed `start` and MCP `start` automatically request browser
-fingerprint/proxy mode. Do not manually invent or persist fingerprint IDs for
-the normal agent path, and use `--skip-verify` only when intentionally
-bypassing browser verification.
-
-Managed launch owns the browser profile and CDP binding. Do not pass
-`--user-data-dir`, `--remote-debugging-port`, or
-`--remote-debugging-address` as browser arguments; use `--profile`, `--port`,
-or an explicit `--cdp` endpoint instead.
-
-For a fresh identity:
-
-```bash
-clawctl rotate --profile work --url clawbrowser://verify/ --json
-clawctl endpoint --profile work --json
-```
-
-For a provided CDP endpoint:
-
-```bash
-clawctl --cdp http://127.0.0.1:9222 tabs list --json
-clawctl --cdp http://127.0.0.1:9222 verify --json
-```
-
-## Endpoint Rules
-
-- `clawctl mcp` is a local stdio tool, not a network daemon.
-- Treat CDP endpoints as sensitive localhost handles.
-- CDP endpoints are temporary runtime handles.
-- Always fetch the current endpoint with `clawctl endpoint --profile <name>` after start, reattach, restart, rotate, or connection failure.
-- Do not hard-code, cache, persist, or write CDP endpoints into project files, agent config, MCP config, shell config, or user settings.
-- If an endpoint stops working, call `clawctl endpoint --profile <name>` again, then `clawctl start --profile <name> ...` if the profile is down.
-
-## Verify And Identity
-
-- Managed profiles are expected to run in fingerprint/proxy mode.
-- `clawbrowser://verify/` is the source of truth for fingerprint, proxy, geo, WebGL, canvas, timezone, user agent, and browser identity state.
-- Run `clawctl proxy-traffic --json` before proxy-backed browser work. If the
-  state is `exhausted`, stop launching/rotating/retrying proxy work, tell the
-  user to top up traffic in the dashboard, and rerun `proxy-traffic` before
-  continuing.
-- Verify is required when proving identity/proxy correctness, after rotate/regenerate, or while debugging browser-quality issues.
-- Do not infer fingerprint/proxy success from launch flags alone.
-- Do not use random external fingerprint-checking sites unless the user asks.
-
-## Auth
-
-- Browser-managed `config.json` is the source of truth for saved auth.
-- If missing, ask once for the real API key from `https://app.clawbrowser.ai`.
-- Do not use dummy keys.
-- Persist the key with `clawctl config set --api-key <key>`; do not export API keys as environment variables.
-- Do not store keys in MCP config, agent config, shell rc files, random env files, or logs.
-- Saved auth lives at `<config-dir>/config.json`. `clawctl` resolves
-  `<config-dir>` from `CLAWBROWSER_CONFIG_DIR`, then
-  `$XDG_CONFIG_HOME/clawbrowser` on Linux/macOS when set, then
-  `$HOME/.config/clawbrowser`; Windows defaults to
-  `%LOCALAPPDATA%\Clawbrowser`.
-- In restricted containers, set `CLAWBROWSER_CONFIG_DIR` or `HOME` to a
-  durable writable agent mount before running `clawctl`.
-- Resolve config paths before writing; do not pass unresolved strings such as `$HOME/...` or `~/...` to file-write tools.
-- Use `clawbrowser://auth` for manual reauthentication.
-
-## Cleanup
-
-```bash
-clawctl sessions list --json
-clawctl list --profile work --json
-clawctl stop --profile work --json
-```
-
-## Documentation Maintenance
-
-`README.md` is the canonical English product README. The files listed in
-`docs/i18n/manifest.json` are translations of that source.
-
-When the canonical README changes:
-
-1. Update all nine translated READMEs in the same change.
-2. Preserve product names, technical terms, commands, code blocks, paths, and
-   URLs exactly unless the canonical source intentionally changes them.
-3. Keep the complete language selector in every README.
-4. From a translated README, use `../../../assets/...` for shared images and
-   `../../../INSTALL.md` for the installation guide.
-5. Review every translation, then run
-   `node scripts/validate-i18n.mjs --update-hash` to record the new canonical
-   hash.
-6. Run `node scripts/validate-i18n.mjs` again before committing.
-
-Do not update the hash merely to silence a stale-translation error. It
-certifies that every locale was reviewed against the current English source.
+README.md is canonical English. Update all nine translations listed in docs/i18n/manifest.json when changing README content. Keep language selectors and shared code blocks consistent. Review every translation before running node scripts/validate-i18n.mjs --update-hash, then run node scripts/validate-i18n.mjs. Update the documentation index when adding guides.

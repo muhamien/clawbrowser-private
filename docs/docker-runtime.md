@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](local-runtime.md).
+
 # Docker Runtime for ClawBrowser
 
 This repo does not build Chromium inside Docker.

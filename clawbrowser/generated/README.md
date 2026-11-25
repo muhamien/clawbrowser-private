@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](../../docs/local-runtime.md).
+
 # clawbrowser/generated/
 
 This directory contains Clawbrowser-friendly C++ types generated from the

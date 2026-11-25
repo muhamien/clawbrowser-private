@@ -1,27 +1,13 @@
-# Security Policy
+# Security policy
 
-## Supported scope
+## Scope and implementation status
 
-Security fixes target the repository's default branch. This repository contains the Clawbrowser application, its integration and packaging configuration, and community documentation. Separately distributed runtimes or services are outside this repository's scope.
+This fork targets local profile storage, loopback automation, and explicitly allowed destination traffic. The inherited implementation still contains vendor and external network paths. A validated local runtime and independent network isolation are pending.
 
-## Report privately
+Security review includes startup, profile parsing, local control access, subprocesses, DNS, redirects, WebSockets, WebRTC, QUIC, background services, and update mechanisms. Report any route that can send runtime traffic outside the configured destination policy.
 
-Do not disclose a suspected vulnerability in a public issue, discussion, pull request, or comment.
+## Reporting
 
-This repository is public and private vulnerability reporting is enabled. Submit reports at:
+Check the fork's [Security page](https://github.com/muhamien/clawbrowser-private/security) for an available private reporting channel. Private vulnerability reporting availability has not been verified. If no private channel is available, ask the maintainer to establish one before sharing sensitive reproduction details. Public reports should omit exploitable details, credentials, cookies, and personal data.
 
-https://github.com/clawbrowser/clawbrowser/security/advisories/new
-
-A useful report includes:
-
-* the affected file, route, or component;
-* impact and required preconditions;
-* reproducible steps or a minimal proof of concept;
-* suggested mitigations, if known;
-* whether the issue has been disclosed elsewhere.
-
-If the issue belongs to an upstream or related project, use that project's published private reporting process.
-
-## Responsible testing
-
-Only test systems and accounts you are authorized to test. Avoid privacy violations, service disruption, destructive actions, and access to data that is not yours. Give maintainers reasonable time to investigate and coordinate disclosure before publishing details.
+Send issues that affect the upstream project through its published security process. Test only authorized systems and accounts. Include the affected revision, platform, impact, and sanitized reproduction evidence.

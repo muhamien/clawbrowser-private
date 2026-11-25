@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](../../docs/local-runtime.md).
+
 # Font catalog acceptance boundary
 
 `catalog.json` is a hashed runtime input. Its `release_gaps` list records the

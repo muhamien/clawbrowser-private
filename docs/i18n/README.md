@@ -1,4 +1,4 @@
-# Clawbrowser README translations
+# Clawbrowser Private README translations
 
 The canonical README is maintained in English at [`/README.md`](../../README.md). Choose a translation below:
 
@@ -16,3 +16,5 @@ The canonical README is maintained in English at [`/README.md`](../../README.md)
 | العربية | `ar` | [قراءة](ar/README.md) |
 
 Translations follow the canonical English structure. Product names, commands, paths, URLs, and code blocks stay unchanged. Run `node scripts/validate-i18n.mjs` from the repository root to detect missing files, broken local references, code-block drift, or translations that may be stale after an English README change.
+
+All locales describe the documentation-first status, inherited network dependencies, and the pending local runtime. Review their meaning as well as validator results before accepting an update.

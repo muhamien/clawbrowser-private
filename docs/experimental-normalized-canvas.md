@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](local-runtime.md).
+
 # Experimental normalized Canvas (Linux QA only)
 
 This opt-in prototype is not the default and is not an accepted replacement for

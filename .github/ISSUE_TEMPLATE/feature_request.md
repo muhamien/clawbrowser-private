@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea or improvement for Clawbrowser
+about: Suggest an idea or improvement for Clawbrowser Private
 title: "[Feature] "
 labels: enhancement
 assignees: ''
@@ -21,3 +21,7 @@ Any alternative solutions or features you've considered.
 ## Additional context
 
 Any other context, references, or screenshots about the feature request.
+
+## Local runtime evidence
+
+Include the source revision, implementation status, network policy, and sanitized observations relevant to the report.

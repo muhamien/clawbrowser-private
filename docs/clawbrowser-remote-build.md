@@ -1,3 +1,5 @@
+> Fork context — This document records inherited upstream behavior or technical work. Its commands, endpoints, infrastructure, and acceptance results require review for Clawbrowser Private. The local runtime and destination restrictions remain pending implementation and testing. See [local runtime design](local-runtime.md).
+
 # Clawbrowser Remote Build Guide
 
 This guide is for building the `clawbrowser` browser-component work inside a real Chromium checkout on a remote macOS machine.
@@ -27,7 +29,7 @@ Primary sources:
 
 ## What Is Project-Specific
 
-This repo is **not** a standalone Chromium checkout. The code under [clawbrowser/BUILD.gn](/Users/nomionz/dev/clawbrowser/clawbrowser/BUILD.gn#L7) assumes it lives under `chromium/src/` as `//clawbrowser`.
+This repo is **not** a standalone Chromium checkout. The code under [clawbrowser/BUILD.gn](../clawbrowser/BUILD.gn#L7) assumes it lives under `chromium/src/` as `//clawbrowser`.
 
 For this project, the minimum overlay needed for build-related work is:
 

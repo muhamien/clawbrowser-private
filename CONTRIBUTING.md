@@ -1,83 +1,23 @@
-# Contributing to Clawbrowser
+# Contributing to Clawbrowser Private
 
-Thank you for helping improve Clawbrowser. Contributions of all sizes are welcome: bug reports, documentation fixes, tests, design improvements, and new features.
-
-Please keep contributions focused, factual, and easy to review. By participating, you agree to follow our [Code of Conduct](CODE_OF_CONDUCT.md).
-
-## Before you start
-
-- Search existing issues and pull requests to avoid duplicate work.
-- For a small bug fix, documentation correction, or test improvement, feel free to open a pull request directly.
-- For a large feature, architectural change, or new dependency, open an issue first so the approach can be discussed before significant work begins.
-- Do not report security vulnerabilities publicly. Follow [SECURITY.md](.github/SECURITY.md).
+Contributions should advance local profile management, local automation, and explicit destination network control. See the [runtime design](docs/local-runtime.md) and [installation status](INSTALL.md) for the current scope.
 
 ## Development setup
 
-Fork the repository and clone your fork:
-
-```
-git clone https://github.com/YOUR-USERNAME/clawbrowser.git
-cd clawbrowser
-git remote add upstream https://github.com/clawbrowser/clawbrowser.git
-git fetch upstream
+```bash
+git clone https://github.com/muhamien/clawbrowser-private.git
+cd clawbrowser-private
+git switch -c docs/local-runtime
 ```
 
-Build and run instructions are documented in [INSTALL.md](INSTALL.md), and a container-based setup is available via the provided `Dockerfile` and `docker/` directory. Create a focused branch from the latest default branch before making changes:
+This repository provides a Chromium overlay, patches, schemas, and build helpers. A separate Chromium checkout is required for browser builds. The `api/` directory contains inherited contracts and mocks. Availability of a full server implementation has not been established.
 
-```
-git switch -c fix/short-description
-```
+## Changes and review
 
-## Repository structure
+Keep changes focused and preserve the license and attribution notices. Include the concrete behavior, verification results, and remaining limitations in each pull request. Add regression coverage for profile handling, startup, and network policy changes. Keep secrets, session data, generated browser binaries, and personal machine details out of commits.
 
-- `clawbrowser/` — core application source.
-- `api/` — service and API layer.
-- `scripts/` — build and maintenance helpers.
-- `docker/` — container build and runtime configuration.
-- `docs/` — project documentation.
-- `assets/` and `branding/` — application assets and branding.
+Documentation must distinguish inherited implementation, fork requirements, and verified results. Keep technical records traceable. For README updates, review all translations and run the i18n validator as described in AGENTS.md.
 
-## Making changes
+## Security and conduct
 
-- Keep each contribution limited to one coherent concern.
-- Match the existing code style and conventions of the files you touch.
-- Preserve existing behavior unless the change intentionally replaces it.
-- Add or update tests for bug fixes and behavior changes where applicable.
-- Avoid unrelated formatting or dependency updates.
-- Never commit credentials, API keys, personal data, dependency directories, or generated build output.
-
-## Commits
-
-Write concise commit messages in the imperative mood. A useful message explains the outcome rather than the activity:
-
-```
-Fix proxy verification order
-Reconcile managed profiles with installed fonts
-Add packaging coverage for Linux
-```
-
-Keep unrelated changes out of the final history. Do not rewrite history after review has started unless the reviewers expect it.
-
-## Pull requests
-
-A pull request should include:
-
-- a short explanation of the problem and the chosen solution;
-- links to related issues;
-- the checks you ran and their results;
-- screenshots or a short recording for visible UI changes;
-- notable risks, limitations, or follow-up work.
-
-Before requesting review, confirm that:
-
-- the change is focused and contains no accidental files;
-- relevant tests and builds pass;
-- no secrets, personal data, or generated build output are included.
-
-Reviewers may request changes for correctness, maintainability, consistency, security, or scope. Please keep discussion constructive.
-
-## Reporting bugs
-
-A useful bug report includes the Clawbrowser version, operating system, reproduction steps, expected behavior, actual behavior, and relevant logs or screenshots with sensitive information removed.
-
-Thank you for making Clawbrowser better.
+Follow the [Code of Conduct](CODE_OF_CONDUCT.md) and [security reporting guidance](.github/SECURITY.md). Reports should include the affected revision, platform, reproduction steps, and sanitized evidence.
