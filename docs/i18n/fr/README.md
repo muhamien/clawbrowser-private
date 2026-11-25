@@ -8,7 +8,7 @@ Ce fork vise des profils locaux, une automatisation CDP locale et des connexions
 
 ## État du développement
 
-La documentation constitue la première étape. Le code hérité comprend encore des contrôles de clé API, des récupérations distantes d’empreintes et des vérifications externes. Le fonctionnement local et l’isolation réseau restent à implémenter et à tester.
+Le code démarre désormais avec des profils locaux, désactive les API et identifiants du fournisseur et supprime la vérification externe du proxy. Compilation, tests C++, filtrage des destinations, lanceur local et validation du trafic restent à réaliser. L’application upstream installée conserve son comportement initial.
 
 ## Installation et vérification
 

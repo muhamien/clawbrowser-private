@@ -8,7 +8,7 @@ This fork targets local profiles, local CDP automation, and outbound access rest
 
 ## Development status
 
-This is a documentation-first fork. The inherited implementation still includes API-key checks, remote fingerprint retrieval, and external verification requests. The local runtime and its network isolation remain pending implementation and testing.
+The source now starts with local profiles, disables vendor API operations and credentials, and removes external proxy verification. Browser compilation, C++ tests, destination network enforcement, the local launcher, and runtime traffic validation remain pending. The installed upstream application still has its original behavior.
 
 ## Setup and verification
 

@@ -13,19 +13,7 @@ import("//testing/test.gni")
 import("//tools/grit/grit_rule.gni")
 
 config("clawbrowser_backend_defaults") {
-  if (is_official_build) {
-    defines = [
-      "CLAWBROWSER_DEFAULT_API_BASE_URL=\"https://api.clawbrowser.ai\"",
-      "CLAWBROWSER_DEFAULT_DASHBOARD_URL=\"https://app.clawbrowser.ai\"",
-      "CLAWBROWSER_ENABLE_DEV_PROXY_URL_OVERRIDE=0",
-    ]
-  } else {
-    defines = [
-      "CLAWBROWSER_DEFAULT_API_BASE_URL=\"https://api.qa.clawbrowser.ai\"",
-      "CLAWBROWSER_DEFAULT_DASHBOARD_URL=\"https://app.qa.clawbrowser.ai\"",
-      "CLAWBROWSER_ENABLE_DEV_PROXY_URL_OVERRIDE=1",
-    ]
-  }
+  defines = [ "CLAWBROWSER_ENABLE_DEV_PROXY_URL_OVERRIDE=0" ]
 }
 
 config("clawbrowser_windows_socket_libs") {

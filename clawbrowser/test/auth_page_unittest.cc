@@ -11,11 +11,7 @@ namespace clawbrowser {
 namespace {
 
 TEST(AuthPageTest, DashboardUrlMatchesBuildDefault) {
-#if defined(CLAWBROWSER_DEFAULT_DASHBOARD_URL)
-  EXPECT_EQ(GetAuthDashboardUrl(), CLAWBROWSER_DEFAULT_DASHBOARD_URL);
-#else
-  EXPECT_EQ(GetAuthDashboardUrl(), "https://app.clawbrowser.ai");
-#endif
+  EXPECT_EQ(GetAuthDashboardUrl(), "clawbrowser://auth/");
 }
 
 TEST(AuthPageTest, SaveSuccessMessageExplainsAutomaticRestart) {

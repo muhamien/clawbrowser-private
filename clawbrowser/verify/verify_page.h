@@ -48,7 +48,6 @@ class VerifyPageUI : public content::WebUIController {
  private:
   // Handle "verifyProxy" message from page JS.
   void HandleVerifyProxy(const base::ListValue& args);
-  void VerifyClientProxyGeo(ClientProxyGeo expected, size_t provider);
 
   // Handle "verifyComplete" message — result of all checks.
   void HandleVerifyComplete(const base::ListValue& args);
@@ -64,8 +63,6 @@ class VerifyPageUI : public content::WebUIController {
   bool verify_passed_ = false;
   bool verification_complete_ = false;
   base::OneShotTimer failure_exit_timer_;
-  std::unique_ptr<ApiClient> api_client_;
-  std::unique_ptr<network::SimpleURLLoader> client_proxy_loader_;
   base::WeakPtrFactory<VerifyPageUI> weak_ptr_factory_{this};
 };
 

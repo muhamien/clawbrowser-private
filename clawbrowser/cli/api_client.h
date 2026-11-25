@@ -22,9 +22,8 @@ struct ApiError {
   std::string message;
 };
 
-// HTTP client for clawbrowser API. Used pre-launch in browser process.
-// Only two endpoints: generate fingerprint and verify proxy.
-// 10s timeout, no retries — fail fast.
+// Compatibility boundary for inherited callers. All vendor operations fail
+// locally, without constructing a network request.
 class ApiClient {
  public:
   ApiClient(const std::string& base_url,
@@ -43,11 +42,6 @@ class ApiClient {
   void VerifyProxy(const VerifyProxyRequest& request,
                    VerifyCallback callback);
 
- private:
-  std::string base_url_;
-  std::string api_key_;
-  scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
-  std::unique_ptr<network::SimpleURLLoader> loader_;
 };
 
 }  // namespace clawbrowser

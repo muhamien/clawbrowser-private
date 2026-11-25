@@ -26,13 +26,13 @@ base::FilePath GetClawbrowserConfigDir() {
   base::FilePath local_app_data;
   if (base::PathService::Get(base::DIR_LOCAL_APP_DATA, &local_app_data) &&
       !local_app_data.empty()) {
-    return local_app_data.AppendASCII("Clawbrowser");
+    return local_app_data.AppendASCII("ClawbrowserPrivate");
   }
 #endif
 
   base::FilePath home_dir;
   base::PathService::Get(base::DIR_HOME, &home_dir);
-  return home_dir.AppendASCII(".config").AppendASCII("clawbrowser");
+  return home_dir.AppendASCII(".config").AppendASCII("clawbrowser-private");
 }
 
 }  // namespace clawbrowser
