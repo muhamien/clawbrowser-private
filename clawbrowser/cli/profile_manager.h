@@ -28,13 +28,13 @@ class ProfileManager {
   explicit ProfileManager(const base::FilePath& root_dir);
   ~ProfileManager();
 
-  // Resolve API key: env var CLAWBROWSER_API_KEY first, then config.json.
+  // Compatibility API. Vendor credentials are disabled and return no value.
   std::optional<std::string> ResolveApiKey();
 
-  // Resolve API base URL: env var CLAWBROWSER_API_BASE_URL, then config.json.
+  // Compatibility API. Vendor service URLs are disabled and return no value.
   std::optional<std::string> ResolveBaseUrl();
 
-  // Persist API key into config.json while preserving unrelated config keys.
+  // Reject vendor credential persistence.
   base::expected<void, std::string> SaveApiKey(const std::string& api_key);
 
   // List all cached fingerprint profiles.

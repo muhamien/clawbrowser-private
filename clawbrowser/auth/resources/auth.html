@@ -1,38 +1,11 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="utf-8">
-  <meta name="color-scheme" content="dark light">
-  <title>Clawbrowser API Key</title>
-  <link rel="icon" type="image/svg+xml" href="side-bite.svg">
-  <link rel="stylesheet" href="auth.css">
-</head>
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><title>Clawbrowser Private</title></head>
 <body>
-  <main id="container">
-    <section class="panel">
-      <img class="brand-icon" src="side-bite.svg" alt="">
-      <p class="eyebrow">Clawbrowser</p>
-      <h1>API key required</h1>
-      <button id="get-api-key" class="secondary get-key" type="button">Get API key</button>
-
-      <label class="field" for="api-key">
-        <span>Paste API key</span>
-        <input id="api-key"
-               name="api-key"
-               type="password"
-               autocomplete="off"
-               spellcheck="false"
-               placeholder="Paste API key">
-      </label>
-
-      <div class="actions">
-        <button id="save-api-key" class="primary" type="button">Save API key</button>
-      </div>
-
-      <p id="status" class="status">Clawbrowser will restart after the key is saved.</p>
-    </section>
-  </main>
-
-  <script src="auth.js"></script>
+<h1>Local profiles</h1>
+<p>Clawbrowser Private uses local browser storage. Start without a fingerprint
+for native browser identity, or select a validated local fingerprint profile.</p>
+<p>Vendor activation and remote profile generation are disabled.</p>
+<p>Destination-only network enforcement and release validation are still pending.</p>
 </body>
 </html>

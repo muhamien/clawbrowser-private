@@ -8,7 +8,7 @@ Dieser Fork zielt auf lokale Profile, lokale CDP-Automatisierung und ausgehende 
 
 ## Entwicklungsstand
 
-Zunächst wird die Dokumentation angepasst. Die geerbte Implementierung enthält weiterhin API-key-Prüfungen, entfernte Fingerprint-Abfragen und externe Verifikation. Lokale Laufzeit und Netzwerkisolation müssen noch implementiert und getestet werden.
+Der Quellcode startet jetzt mit lokalen Profilen, deaktiviert Anbieter-APIs und Zugangsdaten und entfernt externe Proxyprüfungen. Kompilierung, C++-Tests, Zielbeschränkungen, lokaler Launcher und Laufzeitprüfung stehen aus. Die installierte Upstream-Anwendung behält ihr bisheriges Verhalten.
 
 ## Einrichtung und Prüfung
 

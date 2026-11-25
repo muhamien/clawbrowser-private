@@ -12,12 +12,12 @@ The initial audit found API-key gates in both early startup and RunStartup in `c
 
 The separately distributed clawctl binary requires vendor credentials. Its public release repository did not expose implementation source during the initial audit. A local launcher is planned to manage process lifetime, profile locking, and fresh loopback CDP discovery. Server-side fingerprint generation parity has not been established from the available source.
 
-## Planned changes
+## Remaining implementation
 
-1. Add local startup and remove credential gates from that path, including early startup.
-2. Load schema-validated local profiles and implement deterministic local migrations. Unsupported profiles should produce actionable local errors.
-3. Remove vendor client dependencies and endpoints from the local build. Replace authentication UI with local profile management.
-4. Replace external verification with local inspection and remove remote control and service integrations from the runtime path.
+1. Source implementation removes credential gates from early and main startup. Compile and validate this path.
+2. Source implementation reads profiles with the existing envelope parser. Missing profiles and regeneration requests fail locally. Validate older profiles and design local migration tools.
+3. The API client now rejects vendor operations without constructing requests. Build defaults and credential resolution are disabled, and the former authentication page displays local-profile information. Validate all call sites in a compiled build.
+4. Proxy verification now reports local configuration with external geography explicitly unverified. The local launcher and distribution workflow still need to replace vendor tooling.
 5. Add process-level outbound isolation with explicit domain policy. Cover DNS resolution and browser children, UDP, QUIC, WebRTC, redirects, workers, downloads, and background Chromium services.
 6. Connect automation through a fresh loopback CDP endpoint and adapt the Artlist CLI to the local launcher.
 
@@ -38,3 +38,9 @@ Source searches and browser flags provide supporting checks. The release gate re
 ## Build and licensing
 
 This repository is an overlay for the pinned Chromium source. Build readiness, platform packaging, and local release artifacts still need verification. Preserve MIT copyright and permission notices along with applicable Chromium and third-party notices. Review separately distributed components before incorporating them.
+
+## Source validation results
+
+`python3 scripts/local_runtime_source_test.py` passed four source checks. `bash scripts/clawbrowser_startup_patch_test.sh` passed the integration-patch contract check. These checks establish source properties only. Updated C++ tests cover local startup, unavailable profiles, rejected regeneration, disabled credentials, and absence of API loader requests. They have not been compiled or executed because a Chromium checkout is unavailable and the current disk has approximately 21 GiB free.
+
+Vendor acquisition tests were replaced with local behavior contracts. Cached-profile, rendering-policy, and profile persistence tests are retained where their behavior still applies. Full C++ suite execution remains a release blocker. Destination isolation, the local launcher, process-level controls, and a built application are pending. The installed upstream browser has not been replaced.

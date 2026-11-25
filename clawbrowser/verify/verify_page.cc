@@ -47,85 +47,10 @@ ProxyExpectation::~ProxyExpectation() = default;
 
 namespace {
 
-struct VerifyApiConfig {
-  std::optional<std::string> api_key;
-  std::optional<std::string> base_url;
-};
-
-VerifyApiConfig LoadVerifyApiConfig(base::FilePath config_dir) {
-  ProfileManager profile_manager(config_dir);
-  VerifyApiConfig config;
-  config.api_key = profile_manager.ResolveApiKey();
-  config.base_url = profile_manager.ResolveBaseUrl();
-  return config;
-}
-
-ProxyExpectation LoadVerifyExpectedProxyLocation(
-    const base::FilePath& config_dir,
-    const std::optional<std::string>& generated_country) {
-  const base::CommandLine* command_line =
-      base::CommandLine::ForCurrentProcess();
-  if (!command_line) {
-    return ResolveProxyExpectation(std::string(), std::nullopt,
-                                   generated_country);
-  }
-
-  const std::string fingerprint_id =
-      command_line->GetSwitchValueASCII("fingerprint");
-  if (fingerprint_id.empty()) {
-    return ResolveProxyExpectation(std::string(), std::nullopt,
-                                   generated_country);
-  }
-
-  ProfileManager profile_manager(config_dir);
-  auto profile = profile_manager.ReadProfile(fingerprint_id);
-  if (!profile.has_value()) {
-    return ResolveProxyExpectation(std::string(), std::nullopt,
-                                   generated_country);
-  }
-
-  return ResolveProxyExpectation(profile->request.country,
-                                 profile->request.city, generated_country);
-}
-
 std::string SerializeJson(base::ListValue list) {
   std::string json = "[]";
   base::JSONWriter::Write(base::Value(std::move(list)), &json);
   return json;
-}
-
-scoped_refptr<network::SharedURLLoaderFactory> GetVerifyApiUrlLoaderFactory(
-    content::WebUI* web_ui) {
-  if (g_browser_process &&
-      g_browser_process->system_network_context_manager()) {
-    auto factory =
-        g_browser_process->system_network_context_manager()
-            ->GetSharedURLLoaderFactory();
-    if (factory) {
-      return factory;
-    }
-  }
-
-  if (!web_ui) {
-    return nullptr;
-  }
-
-  content::WebContents* web_contents = web_ui->GetWebContents();
-  if (!web_contents) {
-    return nullptr;
-  }
-
-  auto* browser_context = web_contents->GetBrowserContext();
-  if (!browser_context) {
-    return nullptr;
-  }
-
-  auto* storage_partition = browser_context->GetDefaultStoragePartition();
-  if (!storage_partition) {
-    return nullptr;
-  }
-
-  return storage_partition->GetURLLoaderFactoryForBrowserProcess();
 }
 
 base::DictValue SerializeMediaDevice(const RuntimeMediaDevice& device) {
@@ -347,181 +272,18 @@ void VerifyPageUI::SetupDataSource(content::WebUIDataSource* source) {
 }
 
 void VerifyPageUI::HandleVerifyProxy(const base::ListValue& args) {
-  auto send_result = [this](base::DictValue result) {
-    web_ui()->CallJavascriptFunctionUnsafe("onProxyVerifyResult",
-                                           base::Value(std::move(result)));
-  };
-
-  const RuntimeProxyConfig* proxy = FingerprintAccessor::GetProxy();
-  if (!proxy) {
-    // No proxy configured — skip proxy verification
-    base::DictValue result;
-    result.Set("match", true);
-    result.Set("actual_country", "N/A");
-    result.Set("detail", "no proxy configured");
-    send_result(std::move(result));
-    return;
-  }
-
-  const std::string proxy_scheme = proxy->scheme.value_or("http");
-  // A server cannot reach a proxy on the user's private network. Use this
-  // profile's network context so the observation traverses the browser proxy.
-  const auto* command_line = base::CommandLine::ForCurrentProcess();
-  ProfileManager profile_manager(GetClawbrowserConfigDir());
-  const std::string fingerprint_id =
-      command_line->GetSwitchValueASCII("fingerprint");
-  if (!fingerprint_id.empty()) {
-    auto profile = profile_manager.ReadProfile(fingerprint_id);
-    if (profile.has_value() && profile->manual_proxy_bound &&
-        profile->request.client_proxy_geo.has_value()) {
-      VerifyClientProxyGeo(*profile->request.client_proxy_geo, 0);
-      return;
-    }
-  }
-  if (ProxyHostRequiresClientGeography(proxy->host.value_or(""))) {
-    base::DictValue result;
-    result.Set("match", false);
-    result.Set("actual_country", "N/A");
-    result.Set("error_code", "client_proxy_geo_missing");
-    result.Set("detail", "restart this local proxy profile with client geography enabled");
-    send_result(std::move(result));
-    return;
-  }
-  const ProxyExpectation expected = LoadVerifyExpectedProxyLocation(
-      GetClawbrowserConfigDir(), proxy->country);
-
-  if (!proxy->host.has_value() || !proxy->port.has_value()) {
-    base::DictValue result;
-    result.Set("match", false);
-    result.Set("actual_country", proxy->country.value_or("N/A"));
-    result.Set("scheme", proxy_scheme);
-    result.Set("error_code", "incomplete_proxy_config");
-    result.Set("detail", "incomplete proxy config");
-    if (expected.country.has_value())
-      result.Set("expected_country", *expected.country);
-    if (expected.city.has_value())
-      result.Set("expected_city", *expected.city);
-    send_result(std::move(result));
-    return;
-  }
-
-  VerifyProxyRequest request;
-  request.proxy.scheme = proxy_scheme;
-  request.proxy.host = *proxy->host;
-  request.proxy.port = *proxy->port;
-  request.proxy.username = proxy->username.value_or("");
-  request.proxy.password = proxy->password.value_or("");
-  // A personal proxy has no managed country. An empty expected country asks
-  // the service to prove the proxy has a real exit IP without imposing a geo.
-  request.expected_country = expected.country.value_or(proxy->country.value_or(""));
-  if (expected.city.has_value())
-    request.expected_city = *expected.city;
-
-  std::string expected_country = request.expected_country;
-  std::optional<std::string> expected_city = request.expected_city;
-  std::string request_scheme = request.proxy.scheme.value_or("http");
-
-  base::ThreadPool::PostTaskAndReplyWithResult(
-      FROM_HERE, {base::MayBlock()},
-      base::BindOnce(&LoadVerifyApiConfig, GetClawbrowserConfigDir()),
-      base::BindOnce(
-          [](base::WeakPtr<VerifyPageUI> self,
-             VerifyProxyRequest request,
-             std::string expected_country,
-             std::optional<std::string> expected_city,
-             std::string request_scheme,
-             VerifyApiConfig config) {
-            if (!self)
-              return;
-
-            auto send_async_result =
-                [self, &expected_country, &expected_city,
-                 &request_scheme](base::DictValue result) {
-                  result.Set("expected_country", expected_country);
-                  if (expected_city.has_value())
-                    result.Set("expected_city", *expected_city);
-                  result.Set("scheme", request_scheme);
-                  self->web_ui()->CallJavascriptFunctionUnsafe(
-                      "onProxyVerifyResult", base::Value(std::move(result)));
-                };
-
-            if (!config.api_key.has_value()) {
-              base::DictValue result;
-              result.Set("match", false);
-              result.Set("actual_country", "N/A");
-              result.Set("error_code", "missing_api_key");
-              result.Set("detail", "API key not found");
-              send_async_result(std::move(result));
-              return;
-            }
-
-            if (!config.base_url.has_value()) {
-              base::DictValue result;
-              result.Set("match", false);
-              result.Set("actual_country", "N/A");
-              result.Set("error_code", "missing_api_base_url");
-              result.Set("detail", "API base URL not found");
-              send_async_result(std::move(result));
-              return;
-            }
-
-            auto url_loader_factory =
-                GetVerifyApiUrlLoaderFactory(self->web_ui());
-            if (!url_loader_factory) {
-              base::DictValue result;
-              result.Set("match", false);
-              result.Set("actual_country", "N/A");
-              result.Set("error_code", "url_loader_unavailable");
-              result.Set("detail", "URL loader factory unavailable");
-              send_async_result(std::move(result));
-              return;
-            }
-
-            self->api_client_ = std::make_unique<ApiClient>(
-                *config.base_url, *config.api_key,
-                std::move(url_loader_factory));
-            self->api_client_->VerifyProxy(
-                request,
-                base::BindOnce(
-                    [](base::WeakPtr<VerifyPageUI> self,
-                       std::string expected_country,
-                       std::optional<std::string> expected_city,
-                       std::string request_scheme,
-                       base::expected<VerifyProxyResponse, ApiError> response) {
-                      if (!self)
-                        return;
-
-                      base::DictValue result;
-                      result.Set("expected_country", expected_country);
-                      if (expected_city.has_value())
-                        result.Set("expected_city", *expected_city);
-                      result.Set("scheme", request_scheme);
-
-                      if (response.has_value()) {
-                        result.Set("match", response->match);
-                        result.Set("actual_country", response->actual_country);
-                        if (response->actual_city.has_value())
-                          result.Set("actual_city", *response->actual_city);
-                        if (response->ipv4.has_value())
-                          result.Set("ipv4", *response->ipv4);
-                        if (response->ipv6.has_value())
-                          result.Set("ipv6", *response->ipv6);
-                      } else {
-                        result.Set("match", false);
-                        result.Set("actual_country", "N/A");
-                        result.Set("error_code", response.error().code);
-                        result.Set("detail", response.error().message);
-                      }
-
-                      self->api_client_.reset();
-                      self->web_ui()->CallJavascriptFunctionUnsafe(
-                          "onProxyVerifyResult", base::Value(std::move(result)));
-                    },
-                    self, std::move(expected_country), std::move(expected_city),
-                    std::move(request_scheme)));
-          },
-          weak_ptr_factory_.GetWeakPtr(), request, std::move(expected_country),
-          std::move(expected_city), std::move(request_scheme)));
+  base::DictValue result;
+  const bool proxy_configured = FingerprintAccessor::GetProxy() != nullptr;
+  result.Set("match", !proxy_configured);
+  result.Set("actual_country", "N/A");
+  result.Set("verification_scope", "local_configuration");
+  result.Set("detail", proxy_configured
+      ? "proxy configured locally; public exit geography is unverified"
+      : "no proxy configured");
+  if (proxy_configured)
+    result.Set("error_code", "external_verification_disabled");
+  web_ui()->CallJavascriptFunctionUnsafe("onProxyVerifyResult",
+                                         base::Value(std::move(result)));
 }
 
 bool ProxyHostRequiresClientGeography(const std::string& raw_host) {
@@ -570,75 +332,6 @@ std::optional<base::DictValue> ClientProxyGeoVerificationResult(
   if (!match)
     result.Set("error_code", "client_proxy_geo_mismatch");
   return result;
-}
-
-void VerifyPageUI::VerifyClientProxyGeo(ClientProxyGeo expected,
-                                       size_t provider) {
-  static constexpr const char* kProviders[] = {
-      "https://ipinfo.io/json", "https://ipapi.co/json/"};
-  auto fail = [this]() {
-    base::DictValue result;
-    result.Set("match", false);
-    result.Set("actual_country", "N/A");
-    result.Set("error_code", "client_proxy_geo_unavailable");
-    result.Set("detail", "cannot verify the browser proxy exit geography");
-    web_ui()->CallJavascriptFunctionUnsafe("onProxyVerifyResult",
-                                           base::Value(std::move(result)));
-  };
-  auto* partition = web_ui()->GetWebContents()->GetBrowserContext()
-                        ->GetDefaultStoragePartition();
-  if (provider >= std::size(kProviders) || !partition) {
-    fail();
-    return;
-  }
-  auto factory = partition->GetURLLoaderFactoryForBrowserProcess();
-  if (!factory) {
-    fail();
-    return;
-  }
-  auto request = std::make_unique<network::ResourceRequest>();
-  request->url = GURL(kProviders[provider]);
-  request->credentials_mode = network::mojom::CredentialsMode::kOmit;
-  request->redirect_mode = network::mojom::RedirectMode::kError;
-  request->load_flags = net::LOAD_DISABLE_CACHE;
-  const auto annotation = net::DefineNetworkTrafficAnnotation(
-      "clawbrowser_client_proxy_geo", R"(
-        semantics {
-          sender: "Clawbrowser proxy verification"
-          description: "Checks the public exit IP, country and timezone using the active browser proxy."
-          trigger: "User opens the fingerprint verification page."
-          data: "A GET request without cookies or proxy credentials in the body."
-          destination: OTHER
-          destination_other: "ipinfo.io or ipapi.co"
-        }
-        policy {
-          cookies_allowed: NO
-          setting: "Only for manually configured client-side proxy profiles."
-          policy_exception_justification: "User initiated proxy verification."
-        })");
-  client_proxy_loader_ = network::SimpleURLLoader::Create(std::move(request), annotation);
-  client_proxy_loader_->SetTimeoutDuration(base::Seconds(12));
-  client_proxy_loader_->DownloadToString(
-      factory.get(),
-      base::BindOnce(
-          [](base::WeakPtr<VerifyPageUI> self, ClientProxyGeo expected,
-             size_t provider, std::optional<std::string> body) {
-            if (!self)
-              return;
-            auto value = body ? base::JSONReader::ReadDict(*body, base::JSON_PARSE_RFC)
-                              : std::nullopt;
-            auto result = value ? ClientProxyGeoVerificationResult(expected, *value)
-                                : std::nullopt;
-            if (!result.has_value()) {
-              self->VerifyClientProxyGeo(std::move(expected), provider + 1);
-              return;
-            }
-            self->client_proxy_loader_.reset();
-            self->web_ui()->CallJavascriptFunctionUnsafe(
-                "onProxyVerifyResult", base::Value(std::move(*result)));
-          },
-          weak_ptr_factory_.GetWeakPtr(), std::move(expected), provider),
-      65536);
 }
 
 void VerifyPageUI::HandleVerifyComplete(const base::ListValue& args) {

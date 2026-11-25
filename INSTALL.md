@@ -2,7 +2,7 @@
 
 ## Current availability
 
-The fork is in the documentation and design stage. A tested local runtime, installer, and release artifact remain pending. The inherited browser still checks API keys and can call external services. Treat existing binaries and build helpers as upstream implementation artifacts until the local acceptance checks pass.
+The fork has an initial local startup source implementation. A tested local runtime, installer, and release artifact remain pending. The installed upstream browser retains its vendor behavior. The modified source still requires compilation and independent destination network enforcement. Treat existing binaries and build helpers as upstream implementation artifacts until the local acceptance checks pass.
 
 ## Source checkout
 

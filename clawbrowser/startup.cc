@@ -23,7 +23,6 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "clawbrowser/cli/api_client.h"
 #include "clawbrowser/cli/args.h"
 #include "clawbrowser/defaults.h"
 #include "clawbrowser/cli/profile_manager.h"
@@ -102,16 +101,6 @@ StartupResult HandleListProfiles(const ClawArgs& args,
   return result;
 }
 
-bool HasStartupUrl(const base::CommandLine* command_line,
-                   base::CommandLine::StringViewType url) {
-  for (const auto& arg : command_line->GetArgs()) {
-    if (arg == url) {
-      return true;
-    }
-  }
-  return false;
-}
-
 void ApplyMacAutomationSwitches(base::CommandLine* command_line) {
 #if BUILDFLAG(IS_MAC)
   if (!command_line->HasSwitch("use-mock-keychain")) {
@@ -120,35 +109,6 @@ void ApplyMacAutomationSwitches(base::CommandLine* command_line) {
 #endif
 }
 
-std::string ResolveImplicitFingerprintId(ProfileManager* profile_manager) {
-  auto env = base::Environment::Create();
-  if (std::optional<std::string> default_fingerprint =
-          env->GetVar("CLAWBROWSER_DEFAULT_FINGERPRINT_ID");
-      default_fingerprint.has_value() && !default_fingerprint->empty()) {
-    return *default_fingerprint;
-  }
-
-  if (std::optional<std::string> cached_profile =
-          profile_manager->FindBestCachedProfileId();
-      cached_profile.has_value() && !cached_profile->empty()) {
-    return *cached_profile;
-  }
-
-  return kDefaultFingerprintId;
-}
-
-void ApplyDefaultFingerprintSwitch(base::CommandLine* command_line,
-                                   ProfileManager* profile_manager) {
-  if (command_line->HasSwitch("fingerprint")) {
-    return;
-  }
-
-  command_line->AppendSwitchASCII(
-      "fingerprint", ResolveImplicitFingerprintId(profile_manager));
-}
-
-void ConfigureAuthStartup(base::CommandLine* command_line,
-                          ProfileManager* profile_manager);
 void ConfigureVanillaUserDataDir(base::CommandLine* command_line,
                                  ProfileManager* profile_manager);
 
@@ -205,73 +165,23 @@ void ApplyFingerprintWebGLIsolation(const ClawArgs& args,
 void ConfigureProfileStartupCommandLine(const ClawArgs& args,
                                         base::CommandLine* command_line,
                                         ProfileManager* profile_manager) {
-  if (args.list()) {
+  if (args.list())
     return;
-  }
-
-  const bool has_api_key = profile_manager->ResolveApiKey().has_value();
-
   if (args.is_vanilla()) {
-    if (!has_api_key) {
-      ConfigureAuthStartup(command_line, profile_manager);
-    } else {
-      ConfigureVanillaUserDataDir(command_line, profile_manager);
-    }
+    ConfigureVanillaUserDataDir(command_line, profile_manager);
     return;
   }
-
-  const std::string& fp_id = args.fingerprint_id();
-  if (!has_api_key) {
-    ConfigureAuthStartup(command_line, profile_manager);
-    return;
-  }
-
   ApplyFingerprintWebGLIsolation(args, command_line);
-  ManagedFingerprintUserDataDir() = profile_manager->GetUserDataDir(fp_id);
+  ManagedFingerprintUserDataDir() =
+      profile_manager->GetUserDataDir(args.fingerprint_id());
   command_line->AppendSwitchPath("user-data-dir",
                                  ManagedFingerprintUserDataDir());
-}
-
-base::FilePath GetAuthUserDataDir(ProfileManager* profile_manager) {
-  return profile_manager->GetVanillaUserDataDir().DirName().AppendASCII("Auth");
-}
-
-bool ShouldKeepAuthStartupSwitch(std::string_view switch_name) {
-  return switch_name != "restore-last-session" &&
-         switch_name != "user-data-dir" &&
-         switch_name != "no-startup-window";
-}
-
-void AppendAuthPage(base::CommandLine* command_line);
-
-void ConfigureAuthStartup(base::CommandLine* command_line,
-                          ProfileManager* profile_manager) {
-  base::CommandLine filtered(command_line->GetProgram());
-  for (const auto& [switch_name, switch_value] : command_line->GetSwitches()) {
-    if (!ShouldKeepAuthStartupSwitch(switch_name)) {
-      continue;
-    }
-    filtered.AppendSwitchNative(switch_name, switch_value);
-  }
-  // Auth runs without a managed fingerprint. Never carry startup URL/file
-  // arguments into that profile: doing so could load the requested target with
-  // native browser surfaces before authentication completes.
-  filtered.AppendSwitchPath("user-data-dir", GetAuthUserDataDir(profile_manager));
-  AppendAuthPage(&filtered);
-  *command_line = filtered;
 }
 
 void ConfigureVanillaUserDataDir(base::CommandLine* command_line,
                                  ProfileManager* profile_manager) {
   command_line->AppendSwitchPath(
       "user-data-dir", profile_manager->GetVanillaUserDataDir());
-}
-
-void AppendAuthPage(base::CommandLine* command_line) {
-  if (HasStartupUrl(command_line, FILE_PATH_LITERAL("clawbrowser://auth/"))) {
-    return;
-  }
-  command_line->AppendArg("clawbrowser://auth/");
 }
 
 std::unique_ptr<Socks5AuthProxyBridge>& ActiveSocks5AuthProxyBridge() {
@@ -319,173 +229,6 @@ std::optional<std::string> ConflictingRequiredProxySwitch(
     }
   }
   return std::nullopt;
-}
-
-constexpr char kBackendBrowserName[] = "chrome";
-
-std::string DefaultProfilePlatform() {
-#if BUILDFLAG(IS_MAC)
-  return "macos";
-#elif BUILDFLAG(IS_WIN)
-  return "windows";
-#elif BUILDFLAG(IS_LINUX)
-  return "linux";
-#else
-  return "macos";
-#endif
-}
-
-std::string RuntimeOS() {
-#if BUILDFLAG(IS_MAC)
-  return "macos";
-#elif BUILDFLAG(IS_WIN)
-  return "windows";
-#elif BUILDFLAG(IS_LINUX)
-  return "linux";
-#else
-  return std::string();
-#endif
-}
-
-std::string RuntimeArch() {
-#if defined(ARCH_CPU_ARM64)
-  return "arm64";
-#elif defined(ARCH_CPU_X86_64)
-  return "amd64";
-#elif defined(ARCH_CPU_X86)
-  return "x86";
-#else
-  return std::string();
-#endif
-}
-
-std::optional<std::string> RuntimeGPUHint(
-    const base::CommandLine& command_line) {
-  if (command_line.HasSwitch("disable-gpu")) {
-    return "swiftshader";
-  }
-  if (IsSwiftShaderWebGLBackend(command_line)) {
-    return "swiftshader";
-  }
-  const std::string use_angle = command_line.GetSwitchValueASCII("use-angle");
-  // Command-line switches describe the adapter Chromium will actually use and
-  // must win over a stale operator hint.  Consult the environment only when no
-  // concrete software backend was selected above.
-  auto env = base::Environment::Create();
-  if (std::optional<std::string> runtime_gpu =
-          env->GetVar("CLAWBROWSER_RUNTIME_GPU");
-      runtime_gpu.has_value() && !runtime_gpu->empty()) {
-    return runtime_gpu;
-  }
-#if BUILDFLAG(IS_MAC)
-  if (use_angle.empty() || use_angle == "metal") {
-    return "apple-metal";
-  }
-#elif BUILDFLAG(IS_WIN)
-  if (use_angle.empty() || use_angle == "d3d11") {
-    return "direct3d11";
-  }
-#endif
-  return std::nullopt;
-}
-
-bool RuntimeHeadless(const base::CommandLine& command_line) {
-  return command_line.HasSwitch("headless");
-}
-
-std::optional<ProxyConfig> ManualProxyForGenerateRequest(
-    const ProfileEnvelope& cached) {
-  if (!cached.response.proxy.has_value()) {
-    return std::nullopt;
-  }
-  const ProxyConfig& saved = *cached.response.proxy;
-  if (!saved.host.has_value() || saved.host->empty() ||
-      !saved.port.has_value() || *saved.port <= 0) {
-    return std::nullopt;
-  }
-  // The backend accepts only these fields for a manual proxy.
-  ProxyConfig manual;
-  manual.scheme = saved.scheme;
-  manual.host = saved.host;
-  manual.port = saved.port;
-  manual.username = saved.username;
-  manual.password = saved.password;
-  return manual;
-}
-
-bool CachedProfileNeedsPrivacyUpgrade(const ProfileEnvelope& cached) {
-  const auto& policy = cached.response.fingerprint.surface_policy;
-  return policy.canvas.mode != "override" ||
-         policy.fonts.mode != "native_or_allowlist" ||
-         !cached.request.runtime_gpu.has_value() ||
-         !base::StartsWith(*cached.request.runtime_gpu, "swiftshader",
-                           base::CompareCase::INSENSITIVE_ASCII);
-}
-
-void ApplyGenerateRequestOverrides(const ClawArgs& args,
-                                   GenerateRequest* request) {
-  if (args.has_location_overrides()) {
-    request->country.clear();
-    request->city.reset();
-    request->connection_type.reset();
-  }
-
-  if (args.has_country_override()) {
-    request->country = args.country();
-  }
-  if (args.has_city_override()) {
-    request->city = args.city();
-  }
-  if (args.has_connection_type_override()) {
-    request->connection_type = args.connection_type();
-  }
-  if (args.has_proxy_scheme_override()) {
-    request->proxy_scheme = args.proxy_scheme();
-  }
-
-  if (request->platform.empty()) {
-    request->platform = DefaultProfilePlatform();
-  }
-  if (request->browser.empty()) {
-    request->browser = kBackendBrowserName;
-  }
-  if (request->country.empty() && !args.has_location_overrides()) {
-    request->country = "US";
-  }
-}
-
-void ApplyRuntimeRequestHints(const base::CommandLine& command_line,
-                              GenerateRequest* request) {
-  // Targeting fields such as country/city are intentionally replayed from a
-  // cached request. Runtime facts are not: after a browser/OS update they must
-  // always describe the executable doing this launch, or regeneration can
-  // immediately create another stale fingerprint.
-  request->runtime_browser_version = version_info::GetVersionNumber();
-  std::string os = RuntimeOS();
-  if (!os.empty()) {
-    request->runtime_os = std::move(os);
-  } else {
-    request->runtime_os.reset();
-  }
-  // We currently have no portable runtime OS-version probe. An absent hint is
-  // safer than replaying a value captured on a different host or OS release.
-  request->runtime_os_version.reset();
-  std::string arch = RuntimeArch();
-  if (!arch.empty()) {
-    request->runtime_arch = std::move(arch);
-  } else {
-    request->runtime_arch.reset();
-  }
-  // The effective launch backend always wins over a value replayed from the
-  // cached request. Otherwise a one-time migration from Apple/D3D to
-  // SwiftShader would keep asking the backend for an incompatible renderer.
-  request->runtime_gpu = RuntimeGPUHint(command_line);
-  request->runtime_headless = RuntimeHeadless(command_line);
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN)
-  request->runtime_font_catalog = kLinuxFontCatalogID;
-#else
-  request->runtime_font_catalog.reset();
-#endif
 }
 
 std::string HeaderOrValue(const RuntimeFingerprint& fp,
@@ -660,8 +403,7 @@ base::expected<std::optional<int>, std::string> HandleBasicStartupComplete(
     if (command_line.GetSwitchValueASCII("type").empty() &&
         !command_line.HasSwitch("version") &&
         !command_line.HasSwitch("help")) {
-      ProfileManager profile_manager(GetClawbrowserConfigDir());
-      if (profile_manager.ResolveApiKey().has_value()) {
+      if (args.has_fingerprint()) {
         auto fonts = ConfigureBundledFontsBeforeThreads();
         if (!fonts.has_value())
           return base::unexpected(fonts.error());
@@ -680,7 +422,6 @@ void ConfigureCommandLineBeforeUserDataDir(base::CommandLine* command_line) {
   ApplyMacAutomationSwitches(command_line);
 
   ProfileManager profile_manager(GetClawbrowserConfigDir());
-  ApplyDefaultFingerprintSwitch(command_line, &profile_manager);
 
   ClawArgs args = ClawArgs::Parse(*command_line);
   SetVerbose(args.verbose());
@@ -715,10 +456,9 @@ base::expected<StartupResult, std::string> ConfigureEarlyStartup(
 
 base::expected<StartupResult, std::string> RunStartup(
     base::CommandLine* command_line,
-    scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory) {
+    scoped_refptr<network::SharedURLLoaderFactory> /*url_loader_factory*/) {
   ApplyMacAutomationSwitches(command_line);
   ProfileManager profile_manager(GetClawbrowserConfigDir());
-  ApplyDefaultFingerprintSwitch(command_line, &profile_manager);
   StartupResult result;
 
   auto basic_startup_result = HandleBasicStartupComplete(*command_line);
@@ -748,169 +488,31 @@ base::expected<StartupResult, std::string> RunStartup(
   CLAW_VLOG() << "starting with args: fingerprint="
               << args.fingerprint_id();
 
-  // Vanilla mode
-  if (args.is_vanilla()) {
-    StopSocks5AuthProxyBridge();
-    if (!profile_manager.ResolveApiKey().has_value()) {
-      ConfigureAuthStartup(command_line, &profile_manager);
-    } else {
-      ConfigureVanillaUserDataDir(command_line, &profile_manager);
-    }
-    return base::ok(std::move(result));
+  if (args.regenerate() || args.has_location_overrides() ||
+      args.has_proxy_scheme_override()) {
+    return base::ok(FailManagedFingerprintStartup(
+        args, "local_profile_update_required",
+        "edit and validate the local profile before changing its identity"));
   }
 
-  // Fingerprint mode
-  const std::string& fp_id = args.fingerprint_id();
-  const bool has_cached_profile = profile_manager.HasCachedProfile(fp_id);
-  std::optional<ProfileEnvelope> cached_profile;
-  if (has_cached_profile) {
-    auto cached = profile_manager.ReadProfile(fp_id);
-    if (!cached.has_value()) {
-      if (args.require_proxy()) {
-        return base::ok(FailManagedFingerprintStartup(
-            args, "fingerprint_load_failed",
-            "cannot read a proxy-bound fingerprint profile: " +
-                cached.error()));
-      }
-    } else {
-      cached_profile = std::move(*cached);
-    }
-  }
-  const bool needs_fetch =
-      args.regenerate() || !cached_profile.has_value() ||
-      CachedProfileNeedsPrivacyUpgrade(*cached_profile);
-  std::optional<std::string> api_key = profile_manager.ResolveApiKey();
-  if (!api_key.has_value()) {
+  if (args.is_vanilla()) {
     if (args.require_proxy()) {
       return base::ok(FailManagedFingerprintStartup(
-          args, "required_proxy_missing",
-          "profile launch requires a proxy, but no API key is available to "
-          "acquire one"));
+          args, "local_proxy_profile_required",
+          "select a local fingerprint profile containing a proxy"));
     }
     StopSocks5AuthProxyBridge();
-    ConfigureAuthStartup(command_line, &profile_manager);
+    ConfigureVanillaUserDataDir(command_line, &profile_manager);
     return base::ok(std::move(result));
   }
 
-  // ConfigureEarlyStartup normally applied this before Chromium initialized
-  // the user-data directory.  Keep RunStartup self-contained as well: unit
-  // tests and embedders may call it directly, and the runtime hint sent to the
-  // backend must describe the adapter that will really be used.
-  ApplyFingerprintWebGLIsolation(args, command_line);
-
-  if (needs_fetch) {
-    std::optional<std::string> base_url = profile_manager.ResolveBaseUrl();
-    if (!base_url.has_value()) {
-      return base::ok(FailManagedFingerprintStartup(
-          args, "no_api_base_url",
-          "API base URL not found. Set CLAWBROWSER_API_BASE_URL or add "
-          "api_base_url to config.json"));
-    }
-
-    ApiClient client(*base_url, *api_key, url_loader_factory);
-
-    // Replay cached targeting during explicit regeneration and automatic
-    // privacy migrations; only a genuinely new profile uses defaults.
-    GenerateRequest params;
-    params.platform = DefaultProfilePlatform();
-    params.browser = kBackendBrowserName;
-    params.country = "US";
-    if (cached_profile.has_value()) {
-      params = cached_profile->request;
-    }
-    ApplyGenerateRequestOverrides(args, &params);
-    ApplyRuntimeRequestHints(*command_line, &params);
-    // A refresh of a manual-proxy profile must name that proxy. Otherwise the
-    // backend aligns timezone and language with a managed exit of its own
-    // while traffic keeps using the user's proxy (e.g. Asia/Krasnoyarsk for a
-    // Moscow mobile exit).
-    if (cached_profile.has_value() && cached_profile->manual_proxy_bound &&
-        !params.client_proxy_geo.has_value()) {
-      params.manual_proxy = ManualProxyForGenerateRequest(*cached_profile);
-    }
-
-    // Synchronous API call (blocking — acceptable for pre-launch)
-    base::RunLoop run_loop;
-    base::expected<GenerateResponse, ApiError> api_result;
-    client.GenerateFingerprint(params,
-        base::BindOnce([](base::RunLoop* loop,
-                          base::expected<GenerateResponse, ApiError>* out,
-                          base::expected<GenerateResponse, ApiError> r) {
-          *out = std::move(r);
-          loop->Quit();
-        }, &run_loop, &api_result));
-    run_loop.Run();
-
-    if (!api_result.has_value()) {
-      const auto& err = api_result.error();
-      const bool invalid_api_key =
-          err.http_status == 401 || err.http_status == 403;
-      std::string msg;
-      if (err.http_status == 0)
-        msg = "cannot reach API at " + *base_url + ": " + err.message;
-      else if (invalid_api_key)
-        msg = "invalid API key";
-      else if (err.http_status == 429)
-        msg = "rate limited, try again later";
-      else
-        msg = "API server error: " + err.message;
-      std::string code = "fingerprint_api_error";
-      if (invalid_api_key) {
-        code = "invalid_api_key";
-      } else if (err.http_status == 0) {
-        code = "fingerprint_api_unavailable";
-      } else if (err.http_status == 429) {
-        code = "fingerprint_api_rate_limited";
-      }
-      return base::ok(FailManagedFingerprintStartup(args, code, msg));
-    }
-
-    // Client-side geography must never allocate a replacement managed proxy.
-    if (params.client_proxy_geo.has_value()) {
-      const auto& expected = *params.client_proxy_geo;
-      const auto& observed = api_result->client_proxy_geo;
-      if (api_result->proxy.has_value() || !observed.has_value() ||
-          observed->ip != expected.ip || observed->country != expected.country ||
-          observed->timezone != expected.timezone ||
-          api_result->fingerprint.timezone != expected.timezone) {
-        return base::ok(FailManagedFingerprintStartup(
-            args, "client_proxy_geo_mismatch",
-            "backend did not retain the selected proxy's exit geography"));
-      }
-    }
-
-    // Save profile envelope
-    ProfileEnvelope envelope;
-    envelope.schema_version = ProfileEnvelope::kCurrentSchemaVersion;
-    envelope.created_at = base::TimeFormatAsIso8601(base::Time::Now());
-    envelope.request = params;
-    // The cached request is replayed in plain text; credentials stay only in
-    // the encrypted proxy envelope.
-    envelope.request.manual_proxy.reset();
-    envelope.response = std::move(*api_result);
-
-    if (cached_profile.has_value() && cached_profile->manual_proxy_bound) {
-      // The generate request cannot express an explicitly selected proxy.
-      // Its response may contain a managed proxy, even when the cached
-      // fingerprint was created for a user's manual proxy. Preserve the
-      // selected endpoint and credentials across privacy upgrades and
-      // explicit fingerprint regeneration.
-      if (!cached_profile->response.proxy.has_value()) {
-        return base::ok(FailManagedFingerprintStartup(
-            args, "manual_proxy_missing",
-            "manual proxy binding has no saved proxy configuration"));
-      }
-      envelope.manual_proxy_bound = true;
-      envelope.response.proxy = cached_profile->response.proxy;
-    }
-
-    auto save_result = profile_manager.SaveProfile(fp_id, envelope);
-    if (!save_result.has_value()) {
-      return base::ok(FailManagedFingerprintStartup(
-          args, "fingerprint_save_failed",
-          "failed to save fingerprint profile: " + save_result.error()));
-    }
+  const std::string& fp_id = args.fingerprint_id();
+  auto local_profile = profile_manager.ReadProfile(fp_id);
+  if (!local_profile.has_value()) {
+    return base::ok(FailManagedFingerprintStartup(
+        args, "local_profile_unavailable", local_profile.error()));
   }
+  ApplyFingerprintWebGLIsolation(args, command_line);
 
   // The installed runtime decides which fonts exist: the bundled catalog, or
   // the default Windows families for a Windows fingerprint on a Windows host.

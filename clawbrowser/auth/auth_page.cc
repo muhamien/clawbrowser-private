@@ -226,11 +226,7 @@ bool LaunchAuthRelaunchProcess(const base::CommandLine& relaunch_command_line) {
 }  // namespace
 
 std::string_view GetAuthDashboardUrl() {
-#if defined(CLAWBROWSER_DEFAULT_DASHBOARD_URL)
-  return CLAWBROWSER_DEFAULT_DASHBOARD_URL;
-#else
-  return "https://app.clawbrowser.ai";
-#endif
+  return "clawbrowser://auth/";
 }
 
 std::string_view GetAuthRestartMessage() {

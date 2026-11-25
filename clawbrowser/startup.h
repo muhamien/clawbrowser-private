@@ -31,9 +31,9 @@ base::expected<std::optional<int>, std::string> HandleBasicStartupComplete(
 // 1. Parse CLI args
 // 2. Handle --list (print and exit)
 // 3. If --fingerprint:
-//    a. Resolve API key
-//    b. Check cache (or --regenerate)
-//    c. Call API if needed, save profile
+//    a. Reject remote regeneration and targeting overrides
+//    b. Read a local profile envelope
+//    c. Fail locally if the profile cannot be read
 //    d. Load fingerprint into accessor
 //    e. Set --clawbrowser-fp-path, --user-data-dir, --proxy-server,
 //       --lang, --accept-lang on command line for child-process loading

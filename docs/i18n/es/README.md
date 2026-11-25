@@ -8,7 +8,7 @@ Este fork busca perfiles locales, automatización CDP local y conexiones salient
 
 ## Estado del desarrollo
 
-Primero se actualiza la documentación. La implementación heredada aún incluye comprobaciones de API key, descarga remota de huellas y verificaciones externas. El entorno local y su aislamiento de red siguen pendientes de implementación y pruebas.
+El código ya inicia con perfiles locales, desactiva las API y credenciales del proveedor y elimina la verificación externa del proxy. Siguen pendientes la compilación, las pruebas C++, el control de destinos, el lanzador local y la validación del tráfico. La aplicación upstream instalada conserva su comportamiento original.
 
 ## Instalación y verificación
 

@@ -90,13 +90,7 @@ std::string InferProfileIdFromProfileDir(const base::FilePath& browser_dir,
 }  // namespace
 
 std::optional<std::string> GetBuildDefaultApiBaseUrl() {
-#if defined(CLAWBROWSER_DEFAULT_API_BASE_URL)
-  constexpr std::string_view kDefaultApiBaseUrl =
-      CLAWBROWSER_DEFAULT_API_BASE_URL;
-  return std::string(kDefaultApiBaseUrl);
-#else
   return std::nullopt;
-#endif
 }
 
 ProfileManager::ProfileManager(const base::FilePath& root_dir)
@@ -105,82 +99,16 @@ ProfileManager::ProfileManager(const base::FilePath& root_dir)
 ProfileManager::~ProfileManager() = default;
 
 std::optional<std::string> ProfileManager::ResolveApiKey() {
-  // 1. Environment variable
-  auto env = base::Environment::Create();
-  if (std::optional<std::string> env_key =
-          env->GetVar("CLAWBROWSER_API_KEY");
-      env_key.has_value() && !env_key->empty()) {
-    return env_key;
-  }
-
-  // 2. config.json
-  base::FilePath config_path = root_dir_.AppendASCII("config.json");
-  std::string config_json;
-  if (base::ReadFileToString(config_path, &config_json)) {
-    auto parsed = base::JSONReader::Read(config_json, base::JSON_PARSE_RFC);
-    if (parsed && parsed->is_dict()) {
-      const std::string* key = parsed->GetDict().FindString("api_key");
-      if (key && !key->empty())
-        return *key;
-    }
-  }
-
   return std::nullopt;
 }
 
 std::optional<std::string> ProfileManager::ResolveBaseUrl() {
-  auto env = base::Environment::Create();
-  if (std::optional<std::string> env_url =
-          env->GetVar("CLAWBROWSER_API_BASE_URL");
-      env_url.has_value() && !env_url->empty()) {
-    return env_url;
-  }
-
-  base::FilePath config_path = root_dir_.AppendASCII("config.json");
-  std::string config_json;
-  if (base::ReadFileToString(config_path, &config_json)) {
-    auto parsed = base::JSONReader::Read(config_json, base::JSON_PARSE_RFC);
-    if (parsed && parsed->is_dict()) {
-      const std::string* url = parsed->GetDict().FindString("api_base_url");
-      if (url && !url->empty())
-        return *url;
-    }
-  }
-
-  return GetBuildDefaultApiBaseUrl();
+  return std::nullopt;
 }
 
 base::expected<void, std::string> ProfileManager::SaveApiKey(
     const std::string& api_key) {
-  if (api_key.empty()) {
-    return base::unexpected("api key cannot be empty");
-  }
-
-  if (!base::CreateDirectory(root_dir_)) {
-    return base::unexpected(
-        "cannot create config directory " + root_dir_.AsUTF8Unsafe());
-  }
-
-  base::DictValue config_dict;
-  base::FilePath config_path = root_dir_.AppendASCII("config.json");
-  std::string config_json;
-  if (base::ReadFileToString(config_path, &config_json)) {
-    auto parsed = base::JSONReader::Read(config_json, base::JSON_PARSE_RFC);
-    if (parsed && parsed->is_dict()) {
-      config_dict = parsed->GetDict().Clone();
-    }
-  }
-
-  config_dict.Set("api_key", api_key);
-
-  std::string output_json;
-  base::JSONWriter::Write(base::Value(std::move(config_dict)), &output_json);
-  if (!base::WriteFile(config_path, output_json)) {
-    return base::unexpected(
-        "cannot write to " + config_path.AsUTF8Unsafe());
-  }
-
-  return base::ok();
+  return base::unexpected("vendor credentials are disabled in Clawbrowser Private");
 }
 
 std::vector<ProfileInfo> ProfileManager::ListProfiles() {

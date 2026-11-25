@@ -155,81 +155,27 @@ class ProfileManagerTest : public testing::Test {
   std::unique_ptr<ProfileManager> manager_;
 };
 
-TEST_F(ProfileManagerTest, ApiKeyFromConfigJson) {
-  WriteConfigJson("key_from_config");
-  auto key = manager_->ResolveApiKey();
-  ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(*key, "key_from_config");
-}
-
-TEST_F(ProfileManagerTest, ApiKeyFromEnvVar) {
+TEST_F(ProfileManagerTest, VendorCredentialsAndEndpointsAreDisabled) {
+  WriteConfigJson("saved-key", "https://forbidden.invalid");
   auto env = base::Environment::Create();
-  env->SetVar("CLAWBROWSER_API_KEY", "key_from_env");
-  // Env var takes precedence over config.json
-  WriteConfigJson("key_from_config");
-  auto key = manager_->ResolveApiKey();
-  ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(*key, "key_from_env");
+  env->SetVar("CLAWBROWSER_API_KEY", "environment-key");
+  env->SetVar("CLAWBROWSER_API_BASE_URL", "https://also-forbidden.invalid");
+  EXPECT_FALSE(manager_->ResolveApiKey().has_value());
+  EXPECT_FALSE(manager_->ResolveBaseUrl().has_value());
+  EXPECT_FALSE(GetBuildDefaultApiBaseUrl().has_value());
   env->UnSetVar("CLAWBROWSER_API_KEY");
-}
-
-TEST_F(ProfileManagerTest, ApiKeyMissing) {
-  auto key = manager_->ResolveApiKey();
-  ASSERT_FALSE(key.has_value());
-}
-
-TEST_F(ProfileManagerTest, BaseUrlFromConfigJson) {
-  WriteConfigJson("key_from_config", "http://127.0.0.1:8787");
-  auto base_url = manager_->ResolveBaseUrl();
-  ASSERT_TRUE(base_url.has_value());
-  EXPECT_EQ(*base_url, "http://127.0.0.1:8787");
-}
-
-TEST_F(ProfileManagerTest, BaseUrlFromEnvVar) {
-  auto env = base::Environment::Create();
-  env->SetVar("CLAWBROWSER_API_BASE_URL", "http://127.0.0.1:9999");
-  WriteConfigJson("key_from_config", "http://127.0.0.1:8787");
-  auto base_url = manager_->ResolveBaseUrl();
-  ASSERT_TRUE(base_url.has_value());
-  EXPECT_EQ(*base_url, "http://127.0.0.1:9999");
   env->UnSetVar("CLAWBROWSER_API_BASE_URL");
 }
 
-TEST_F(ProfileManagerTest, BaseUrlUsesBuildDefaultOnlyWhenConfigured) {
-  auto build_default = GetBuildDefaultApiBaseUrl();
-  auto base_url = manager_->ResolveBaseUrl();
-
-  ASSERT_TRUE(build_default.has_value());
-  ASSERT_TRUE(base_url.has_value());
-  EXPECT_EQ(*base_url, *build_default);
-}
-
-TEST_F(ProfileManagerTest, SaveApiKeyToConfigFallsBackToBuildDefaultBaseUrl) {
-  auto save_result = manager_->SaveApiKey("saved_key");
-  ASSERT_TRUE(save_result.has_value()) << save_result.error();
-
-  auto key = manager_->ResolveApiKey();
-  ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(*key, "saved_key");
-  auto build_default = GetBuildDefaultApiBaseUrl();
-  ASSERT_TRUE(build_default.has_value());
-  auto base_url = manager_->ResolveBaseUrl();
-  ASSERT_TRUE(base_url.has_value());
-  EXPECT_EQ(*base_url, *build_default);
-}
-
-TEST_F(ProfileManagerTest, SaveApiKeyToConfigPreservesBaseUrl) {
-  WriteConfigJson("", "http://127.0.0.1:8787");
-
-  auto save_result = manager_->SaveApiKey("saved_key");
-  ASSERT_TRUE(save_result.has_value()) << save_result.error();
-
-  auto key = manager_->ResolveApiKey();
-  ASSERT_TRUE(key.has_value());
-  EXPECT_EQ(*key, "saved_key");
-  auto base_url = manager_->ResolveBaseUrl();
-  ASSERT_TRUE(base_url.has_value());
-  EXPECT_EQ(*base_url, "http://127.0.0.1:8787");
+TEST_F(ProfileManagerTest, SavingVendorCredentialsDoesNotModifyConfig) {
+  WriteConfigJson("original");
+  const auto path = temp_dir_.GetPath().AppendASCII("config.json");
+  std::string before;
+  ASSERT_TRUE(base::ReadFileToString(path, &before));
+  EXPECT_FALSE(manager_->SaveApiKey("replacement").has_value());
+  std::string after;
+  ASSERT_TRUE(base::ReadFileToString(path, &after));
+  EXPECT_EQ(before, after);
 }
 
 TEST_F(ProfileManagerTest, ListProfiles) {

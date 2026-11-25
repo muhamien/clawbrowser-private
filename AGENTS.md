@@ -6,7 +6,7 @@ Build a local browser runtime with local profile storage and loopback CDP automa
 
 ## Current status
 
-The source is inherited from upstream. Documentation describes the fork's target. Runtime implementation and network isolation remain pending validation. Report implemented behavior separately from design targets and cite actual test evidence before claiming local operation or zero vendor traffic.
+The source contains initial local startup changes and disabled vendor API operations. Compilation, a local launcher, process-level network isolation, and runtime validation remain pending. Report implemented behavior separately from design targets and cite actual test evidence before claiming local operation or zero vendor traffic.
 
 ## Development
 
